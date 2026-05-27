@@ -51,6 +51,7 @@
       background: #0b0d10;
       border: 1px solid var(--line);
       box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+      touch-action: none;
     }
 
     #board {
@@ -141,6 +142,26 @@
       font-size: 14px;
     }
 
+    .touch-controls {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .touch-controls button {
+      min-height: 48px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .touch-controls .wide {
+      grid-column: span 2;
+      background: var(--accent);
+      color: #15120a;
+      border-color: transparent;
+    }
+
     kbd {
       display: inline-grid;
       place-items: center;
@@ -203,6 +224,14 @@
       .stats {
         margin-top: 16px;
       }
+
+      .controls {
+        display: none;
+      }
+
+      .touch-controls {
+        display: grid;
+      }
     }
   </style>
 </head>
@@ -250,6 +279,15 @@
         <div><kbd>Space</kbd> 바로 내려오기 <kbd>P</kbd> 일시정지</div>
       </div>
 
+      <div class="touch-controls" aria-label="모바일 조작 버튼">
+        <button type="button" data-action="left">←</button>
+        <button type="button" data-action="rotate">회전</button>
+        <button type="button" data-action="right">→</button>
+        <button type="button" data-action="down">아래</button>
+        <button class="wide" type="button" data-action="drop">바로 내려오기</button>
+        <button type="button" data-action="pause">일시정지</button>
+      </div>
+
       <button id="restart" type="button">새 게임</button>
     </aside>
   </main>
@@ -269,6 +307,7 @@
     const overlayTitle = document.querySelector("#overlayTitle");
     const overlayText = document.querySelector("#overlayText");
     const restartButton = document.querySelector("#restart");
+    const touchControls = document.querySelector(".touch-controls");
 
     const COLORS = {
       I: "#69d2e7",
@@ -502,6 +541,20 @@
       overlay.classList.toggle("show", paused);
     }
 
+    function runAction(action) {
+      if (action === "pause") {
+        togglePause();
+        return;
+      }
+      if (paused || gameOver) return;
+      if (action === "left") move(-1);
+      if (action === "right") move(1);
+      if (action === "down") softDrop();
+      if (action === "rotate") rotatePiece();
+      if (action === "drop") hardDrop();
+      draw();
+    }
+
     function loop(time = 0) {
       if (gameOver) return;
       const delta = time - lastTime;
@@ -520,20 +573,23 @@
     document.addEventListener("keydown", event => {
       if (event.code === "Space") {
         event.preventDefault();
-        if (!paused && !gameOver) hardDrop();
-        draw();
+        runAction("drop");
         return;
       }
       if (event.key.toLowerCase() === "p") {
-        togglePause();
+        runAction("pause");
         return;
       }
-      if (paused || gameOver) return;
-      if (event.key === "ArrowLeft") move(-1);
-      if (event.key === "ArrowRight") move(1);
-      if (event.key === "ArrowDown") softDrop();
-      if (event.key === "ArrowUp") rotatePiece();
-      draw();
+      if (event.key === "ArrowLeft") runAction("left");
+      if (event.key === "ArrowRight") runAction("right");
+      if (event.key === "ArrowDown") runAction("down");
+      if (event.key === "ArrowUp") runAction("rotate");
+    });
+
+    touchControls.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      runAction(button.dataset.action);
     });
 
     restartButton.addEventListener("click", reset);
